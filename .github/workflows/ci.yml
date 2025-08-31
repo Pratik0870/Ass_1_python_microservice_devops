@@ -4,62 +4,29 @@ on:
   push:
     branches:
       - main
-  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          pip install -r backend/requirements.txt
-          pip install -r frontend/requirements.txt
-          pip install -r logger/requirements.txt
-
-      - name: Run tests
-        run: |
-          echo "No tests yet, skipping..."
-
       - name: Log in to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      - name: Build and push Backend image
+      - name: Build and push Backend
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-backend ./backend
-          docker push ${{ secrets.DOCKER_USERNAME }}/devops-backend
+          docker build -t dd0870/backend:latest ./backend
+          docker push dd0870/backend:latest
 
-      - name: Build and push Frontend image
+      - name: Build and push Frontend
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-frontend ./frontend
-          docker push ${{ secrets.DOCKER_USERNAME }}/devops-frontend
+          docker build -t dd0870/frontend:latest ./frontend
+          docker push dd0870/frontend:latest
 
-      - name: Build and push Logger image
+      - name: Build and push Logger
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-logger ./logger
-          docker push ${{ secrets.DOCKER_USERNAME }}/devops-logger
-
-      # Email notification if pipeline fails
-      - name: Send email on failure
-        if: failure()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{ secrets.EMAIL_USER }}
-          password: ${{ secrets.EMAIL_PASS }}
-          subject: "GitHub Action Failed - DevOps Project"
-          to: pratikrider605@gmail.com
-          from: pratikrider605@gmail.com
-          body: "The pipeline has failed. Check GitHub Actions for details."
+          docker build -t dd0870/logger:latest ./logger
+          docker push dd0870/logger:latest
