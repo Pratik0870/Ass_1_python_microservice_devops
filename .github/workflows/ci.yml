@@ -1,59 +1,65 @@
-name: CI/CD Pipeline
+name: Assignment 1 - Full DevOps Project
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   pull_request:
-    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install -r frontend/requirements.txt
+          pip install -r logger/requirements.txt
+
+      - name: Run tests
+        run: |
+          echo "No tests yet, skipping..."
 
       - name: Log in to DockerHub
         uses: docker/login-action@v2
         with:
-          username: dd0870
+          username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push backend
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: backend/Dockerfile
-          push: true
-          tags: dd0870/python-microservices-backend:latest
+      - name: Build and push Backend image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-backend ./backend
+          docker push ${{ secrets.DOCKER_USERNAME }}/devops-backend
 
-      - name: Build and push frontend
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: frontend/Dockerfile
-          push: true
-          tags: dd0870/python-microservices-frontend:latest
+      - name: Build and push Frontend image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-frontend ./frontend
+          docker push ${{ secrets.DOCKER_USERNAME }}/devops-frontend
 
-      - name: Build and push logger
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: logger/Dockerfile
-          push: true
-          tags: dd0870/python-microservices-logger:latest
+      - name: Build and push Logger image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-logger ./logger
+          docker push ${{ secrets.DOCKER_USERNAME }}/devops-logger
 
-      - name: Send failure alert
+      # Email notification if pipeline fails
+      - name: Send email on failure
         if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
-          server_port: 587
+          server_port: 465
           username: ${{ secrets.EMAIL_USER }}
           password: ${{ secrets.EMAIL_PASS }}
-          subject: "❌ GitHub Actions Pipeline Failed"
-          to: ${{ secrets.EMAIL_USER }}
-          from: DevOps Assignment CI/CD
-          body: "The CI/CD pipeline failed. Please check GitHub Actions logs."
+          subject: "GitHub Action Failed - DevOps Project"
+          to: pratikrider605@gmail.com
+          from: pratikrider605@gmail.com
+          body: "The pipeline has failed. Check GitHub Actions for details."
