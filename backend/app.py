@@ -1,57 +1,40 @@
-import os
-import json
-import time
 from flask import Flask, jsonify
+import os
 import psycopg2
-import requests
+import time
+import json
 
 app = Flask(__name__)
 
 DB_HOST = os.getenv("POSTGRES_HOST", "postgres")
-DB_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
-DB_NAME = os.getenv("POSTGRES_DB", "appdb")
-DB_USER = os.getenv("POSTGRES_USER", "appuser")
-DB_PASS = os.getenv("POSTGRES_PASSWORD", "apppass")
-
-LOGGER_URL = os.getenv("LOGGER_URL", "http://logger:9000/log")
-
-def get_db_conn():
-    return psycopg2.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASS,
-        connect_timeout=5
-    )
+DB_PORT = os.getenv("POSTGRES_PORT", "5432")
+DB_NAME = os.getenv("POSTGRES_DB", "mydb")
+DB_USER = os.getenv("POSTGRES_USER", "postgres")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"}), 200
 
 @app.route("/api/data")
-def api_data():
-    ts = int(time.time())
-    message = {"message": "Hello from Backend", "timestamp": ts}
-
+def get_data():
     try:
-        conn = get_db_conn()
+        conn = psycopg2.connect(
+            host=DB_HOST, port=DB_PORT, dbname=DB_NAME,
+            user=DB_USER, password=DB_PASSWORD
+        )
         cur = conn.cursor()
-        cur.execute("INSERT INTO heartbeats(details) VALUES (%s)", (json.dumps(message),))
+        cur.execute(
+            "INSERT INTO heartbeats(details) VALUES (%s) RETURNING id;",
+            (json.dumps({"message": "Hello from Backend", "timestamp": int(time.time())}),)
+        )
         conn.commit()
         cur.close()
         conn.close()
-        message["db"] = "inserted"
-    except Exception as e:
-        message["db_error"] = str(e)
 
-    try:
-        requests.post(LOGGER_URL, json={"event": "api_hit", "payload": message}, timeout=2)
-        message["logger"] = "notified"
+        return jsonify({"message": "Hello from Backend", "db": "inserted"}), 200
     except Exception as e:
-        message["logger_error"] = str(e)
-
-    return jsonify(message), 200
+        return jsonify({"db_error": str(e), "message": "Hello from Backend"}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
